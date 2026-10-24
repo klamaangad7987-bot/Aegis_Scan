@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+{% block title %}Assistant Vocal — Aegis Scan{% endblock %}
+
+{% block extra_head %}
+<style>
+.va-layout { display:grid; grid-template-columns:1fr 360px; gap:20px; }
+.va-main { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:40px 32px; display:flex; flex-direction:column; align-items:center; position:relative; min-height:480px; }
+.va-orb-wrap { position:relative; margin-bottom:28px; }
+.va-orb {
+  width:140px; height:140px; border-radius:50%;
+  background:linear-gradient(135deg, var(--accent) 0%, #0097b2 100%);
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.3s;
+  box-shadow:0 8px 32px rgba(0,181,216,0.3);
+}
+.va-orb:hover { transform:scale(1.05); box-shadow:0 12px 40px rgba(0,181,216,0.4); }
+.va-orb.listening { background:linear-gradient(135deg, #e53e3e 0%, #c53030 100%); box-shadow:0 8px 32px rgba(229,62,62,0.35); animation:breathe 1.4s ease-in-out infinite; }
+.va-orb.speaking  { background:linear-gradient(135deg, #48bb78 0%, #276749 100%); box-shadow:0 8px 32px rgba(72,187,120,0.35); animation:speakpulse 0.5s ease-in-out infinite alternate; }
+@keyframes breathe   { 0%,100%{transform:scale(1)}   50%{transform:scale(1.06)} }
+@keyframes speakpulse{ from{transform:scale(1)} to{transform:scale(1.04)} }
+.va-wave-ring { position:absolute; inset:-16px; border-radius:50%; border:2px solid rgba(0,181,216,0.3); opacity:0; }
+.va-orb.listening .va-wave-ring { animation:expand 2s ease-out infinite; }
+.va-orb.listening .va-wave-ring:nth-child(2) { animation-delay:0.7s; }
+@keyframes expand { 0%{transform:scale(0.9);opacity:0.5} 100%{transform:scale(1.7);opacity:0} }
+.va-waveform { display:flex; align-items:center; gap:3px; height:28px; margin-bottom:14px; opacity:0; transition:opacity 0.3s; }
+.va-waveform.show { opacity:1; }
+.va-bar { width:4px; border-radius:2px; background:var(--accent); animation:bardance 1.1s ease-in-out infinite; }
+.va-bar:nth-child(1){height:8px;animation-delay:.0s} .va-bar:nth-child(2){height:20px;animation-delay:.1s}
+.va-bar:nth-child(3){height:14px;animation-delay:.2s} .va-bar:nth-child(4){height:24px;animation-delay:.3s}
+.va-bar:nth-child(5){height:10px;animation-delay:.4s} .va-bar:nth-child(6){height:18px;animation-delay:.3s}
+.va-bar:nth-child(7){height:26px;animation-delay:.2s} .va-bar:nth-child(8){height:12px;animation-delay:.1s}
+@keyframes bardance { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1.2)} }
+.va-waveform.speaking .va-bar { background:#48bb78; }
+.va-waveform.listening .va-bar { background:#e53e3e; }
+.va-status-title { font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:6px; text-align:center; }
+.va-status-sub   { font-size:0.82rem; color:var(--text-3); text-align:center; max-width:260px; min-height:32px; }
+.va-transcript { margin-top:14px; padding:10px 18px; background:var(--accent-bg); border:1px solid #bee3f8; border-radius:var(--radius-sm); font-size:0.875rem; color:var(--accent-dark); font-style:italic; text-align:center; display:none; width:100%; }
+.va-transcript.show { display:block; }
+.va-quick { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:20px; }
+.va-quick-btn { padding:6px 13px; border-radius:99px; border:1px solid var(--border); background:var(--white); color:var(--text-2); font-size:0.78rem; cursor:pointer; transition:all 0.15s; }
+.va-quick-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+.va-chat { background:var(--white); border:1px solid var(--border); border-radius:var(--radius); display:flex; flex-direction:column; min-height:480px; }
+.va-chat-head { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+.va-chat-dot { width:8px; height:8px; border-radius:50%; background:var(--c-low); animation:pulse-anim 2s infinite; }
+@keyframes pulse-anim { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.va-messages { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.va-msg { display:flex; gap:8px; animation:msgin 0.25s ease; }
+.va-msg.user { flex-direction:row-reverse; }
+@keyframes msgin { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.va-avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:700; flex-shrink:0; }
+.va-msg.ai   .va-avatar { background:var(--accent-bg); color:var(--accent-dark); }
+.va-msg.user .va-avatar { background:#ebf8ff; color:#2c7a7b; }
+.va-bubble { max-width:88%; padding:9px 13px; border-radius:10px; font-size:0.845rem; line-height:1.6; }
+.va-msg.ai   .va-bubble { background:#f7fafc; border:1px solid var(--border); color:var(--text); }
+.va-msg.user .va-bubble { background:var(--accent); color:white; }
+.va-msg-time { font-size:0.62rem; color:var(--text-3); margin-top:3px; }
+.va-typing { display:flex; gap:4px; align-items:center; padding:8px 12px; background:#f7fafc; border:1px solid var(--border); border-radius:10px; width:fit-content; }
+.va-tdot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:tbounce 1.1s infinite; }
+.va-tdot:nth-child(2){animation-delay:.2s} .va-tdot:nth-child(3){animation-delay:.4s}
+@keyframes tbounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+.va-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:10px 14px; border-top:1px solid var(--border); }
+.va-stat { text-align:center; padding:7px 4px; background:#f7fafc; border-radius:6px; }
+.va-stat-v { font-size:1.1rem; font-weight:800; line-height:1; }
+.va-stat-l { font-size:0.6rem; color:var(--text-3); margin-top:2px; text-transform:uppercase; letter-spacing:0.04em; }
+.va-input-area { padding:10px 14px; border-top:1px solid var(--border); display:flex; gap:7px; }
+.va-input { flex:1; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; font-family:inherit; font-size:0.845rem; outline:none; transition:border-color 0.15s; }
+.va-input:focus { border-color:var(--accent); }
+.va-send { width:34px; height:34px; border-radius:var(--radius-sm); background:var(--accent); border:none; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s; flex-shrink:0; }
+.va-send:hover { background:var(--accent-dark); }
+.va-compat { position:absolute; bottom:14px; font-size:0.68rem; color:var(--text-3); }
+@media(max-width:900px){ .va-layout{grid-template-columns:1fr; grid-template-rows:auto auto;} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:24px; display:flex; align-items:flex-start; justify-content:space-between;">
+  <div>
+    <h1 class="page-title">Assistant vocal</h1>
+    <p class="page-subtitle">Interrogez Aegis Scan par commande vocale ou par texte.</p>
+  </div>
+  <div style="display:flex; align-items:center; gap:6px; padding:6px 14px; background:var(--accent-bg); border:1px solid #bee3f8; border-radius:99px;">
+    <div style="width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse-anim 2s infinite;"></div>
+    <span style="font-size:0.78rem; color:var(--accent-dark); font-weight:600;">Session active</span>
+    <span style="font-size:0.72rem; color:var(--text-3);">ID: {{ context.username[:4] }}-vocal</span>
+  </div>
+</div>
+
+<div class="va-layout">
+  <!-- Orbe principal -->
+  <div class="va-main">
+    <div style="font-size:0.72rem; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:20px;">Session · ID conversation: {{ context.username[:4] }}-vocal</div>
+
+    <div class="va-orb-wrap">
+      <div class="va-orb" id="va-orb" onclick="toggleListen()">
+        <div class="va-wave-ring"></div>
+        <div class="va-wave-ring"></div>
+        <svg id="icon-mic" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8">
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+          <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
+        </svg>
+        <svg id="icon-stop" width="48" height="48" viewBox="0 0 24 24" fill="white" style="display:none">
+          <rect x="6" y="6" width="12" height="12" rx="2"/>
+        </svg>
+        <svg id="icon-speak" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" style="display:none">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 010 7.07"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="va-waveform" id="waveform">
+      <div class="va-bar"></div><div class="va-bar"></div><div class="va-bar"></div>
+      <div class="va-bar"></div><div class="va-bar"></div><div class="va-bar"></div>
+      <div class="va-bar"></div><div class="va-bar"></div>
+    </div>
+
+    <div class="va-status-title" id="status-title">Prêt</div>
+    <div class="va-status-sub" id="status-sub">Cliquez sur l'orbe ou appuyez sur Espace pour parler</div>
+    <div class="va-transcript" id="transcript"></div>
+
+    <div style="display:flex; gap:8px; margin-top:18px;">
+      <div style="text-align:center; padding:8px 16px; background:#f7fafc; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.78rem;">
+        <div style="font-weight:700;">Vous</div>
+        <div style="font-size:0.7rem; color:var(--text-3); margin-top:2px;" id="user-state">—</div>
+      </div>
+      <div style="text-align:center; padding:8px 16px; background:#f7fafc; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.78rem;">
+        <div style="font-weight:700;">Assistant</div>
+        <div style="font-size:0.7rem; color:var(--text-3); margin-top:2px;" id="ai-state">—</div>
+      </div>
+    </div>
+
+    <div class="va-quick">
+      <button class="va-quick-btn" onclick="ask('Combien de scans ai-je effectués ?')">Mes scans</button>
+      <button class="va-quick-btn" onclick="ask('Quelles sont mes vulnérabilités critiques ?')">Critiques</button>
+      <button class="va-quick-btn" onclick="ask('Quel est mon score de risque ?')">Score risque</button>
+      <button class="va-quick-btn" onclick="ask('Explique l injection SQL')">SQL Injection</button>
+      <button class="va-quick-btn" onclick="ask('Comment corriger XSS ?')">XSS</button>
+      <button class="va-quick-btn" onclick="ask('Comment générer un rapport PDF ?')">Rapport PDF</button>
+    </div>
+
+    <div class="va-compat" id="compat-note"></div>
+  </div>
+
+  <!-- Panneau conversation -->
+  <div class="va-chat">
+    <div class="va-chat-head">
+      <div class="va-chat-dot"></div>
+      <span style="font-weight:700; font-size:0.9rem;">Conversation</span>
+      <span style="margin-left:auto; font-size:0.72rem; color:var(--text-3);">Aegis IA</span>
+    </div>
+
+    <div class="va-messages" id="va-messages">
+      <div class="va-msg ai">
+        <div class="va-avatar">AI</div>
+        <div>
+          <div class="va-bubble">
+            Bonjour <strong>{{ context.username }}</strong> !
+            Vous avez <strong>{{ context.total_scans }}</strong> scan(s) et
+            <strong>{{ context.total_vulns }}</strong> vulnérabilité(s).
+            Parlez ou tapez votre question.
+          </div>
+          <div class="va-msg-time">maintenant</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="va-stats">
+      <div class="va-stat"><div class="va-stat-v">{{ context.total_scans }}</div><div class="va-stat-l">Scans</div></div>
+      <div class="va-stat"><div class="va-stat-v" style="color:var(--c-critical)">{{ context.critical }}</div><div class="va-stat-l">Critiques</div></div>
+      <div class="va-stat"><div class="va-stat-v" style="color:var(--c-high)">{{ context.high }}</div><div class="va-stat-l">Élevées</div></div>
+      <div class="va-stat"><div class="va-stat-v">{{ context.total_vulns }}</div><div class="va-stat-l">Total</div></div>
+    </div>
+
+    <div class="va-input-area">
+      <input type="text" class="va-input" id="text-input" placeholder="Tapez votre question..." onkeydown="if(event.key==='Enter')sendText()">
+      <button class="va-send" onclick="sendText()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Constantes & état ─────────────────────────────────────────────────────
+const CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+let recog = null, synth = window.speechSynthesis;
+let listening = false, speaking = false;
+let frVoice = null; // voix française préchargée
+
+const orb       = document.getElementById('va-orb');
+const wf        = document.getElementById('waveform');
+const stTitle   = document.getElementById('status-title');
+const stSub     = document.getElementById('status-sub');
+const trEl      = document.getElementById('transcript');
+const msgs      = document.getElementById('va-messages');
+const iconMic   = document.getElementById('icon-mic');
+const iconStop  = document.getElementById('icon-stop');
+const iconSpeak = document.getElementById('icon-speak');
+
+// ── Gestion des voix (asynchrone sur Chrome/Edge) ────────────────────────
+function loadVoices() {
+  const vs = synth.getVoices();
+  if (vs.length > 0) {
+    // Priorité: voix fr-FR, puis fr, puis toute voix fr-*
+    frVoice = vs.find(v => v.lang === 'fr-FR') ||
+              vs.find(v => v.lang.startsWith('fr')) ||
+              null;
+  }
+}
+// Chargement immédiat (Firefox expose les voix synchroniquement)
+loadVoices();
+// Chrome/Edge expose les voix de façon asynchrone via onvoiceschanged
+if (synth.onvoiceschanged !== undefined) {
+  synth.onvoiceschanged = loadVoices;
+}
+
+// ── États visuels ────────────────────────────────────────────────────────
+function idle() {
+  listening = false; speaking = false;
+  orb.className = 'va-orb';
+  wf.className = 'va-waveform';
+  iconMic.style.display = ''; iconStop.style.display = 'none'; iconSpeak.style.display = 'none';
+  stTitle.textContent = 'Prêt';
+  stSub.textContent = "Cliquez sur l'orbe ou appuyez sur Espace";
+  trEl.className = 'va-transcript';
+  document.getElementById('user-state').textContent = '—';
+  document.getElementById('ai-state').textContent = '—';
+}
+function setListen() {
+  listening = true;
+  orb.className = 'va-orb listening';
+  wf.className = 'va-waveform show listening';
+  iconMic.style.display = 'none'; iconStop.style.display = ''; iconSpeak.style.display = 'none';
+  stTitle.textContent = 'Écoute...'; stSub.textContent = 'Parlez maintenant';
+  trEl.className = 'va-transcript show';
+  document.getElementById('user-state').textContent = 'En écoute';
+}
+function setSpeak() {
+  speaking = true;
+  orb.className = 'va-orb speaking';
+  wf.className = 'va-waveform show speaking';
+  iconMic.style.display = 'none'; iconStop.style.display = 'none'; iconSpeak.style.display = '';
+  stTitle.textContent = 'Réponse...';
+  document.getElementById('ai-state').textContent = 'En parole';
+}
+function setThink() {
+  orb.className = 'va-orb';
+  wf.className = 'va-waveform show';
+  iconMic.style.display = 'none'; iconStop.style.display = 'none'; iconSpeak.style.display = '';
+  stTitle.textContent = 'Analyse...'; stSub.textContent = 'Recherche dans vos données...';
+}
+
+// ── Initialisation reconnaissance vocale ────────────────────────────────
+function initRec() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    document.getElementById('compat-note').textContent = '⚠ Utilisez Chrome/Edge pour la reconnaissance vocale';
+    return;
+  }
+  document.getElementById('compat-note').textContent = '✓ Reconnaissance vocale disponible';
+
+  recog = new SR();
+  recog.lang = 'fr-FR';
+  recog.continuous = false;
+  recog.interimResults = true;
+  recog.maxAlternatives = 1;
+
+  recog.onstart = () => setListen();
+
+  recog.onresult = (e) => {
+    const t = Array.from(e.results).map(r => r[0].transcript).join('');
+    trEl.textContent = t;
+    if (e.results[e.results.length - 1].isFinal) {
+      recog.stop();
+      process(t);
+    }
+  };
+
+  recog.onerror = (e) => {
+    idle();
+    const msgs_map = {
+      'not-allowed': 'Microphone non autorisé. Activez-le dans les paramètres du navigateur.',
+      'no-speech': 'Aucune parole détectée. Réessayez.',
+      'network': 'Erreur réseau. Vérifiez votre connexion.',
+      'aborted': null, // ignoré (stop manuel)
+    };
+    const msg = msgs_map[e.error];
+    if (msg) addMsg('ai', msg);
+  };
+
+  recog.onend = () => {
+    if (listening) { listening = false; }
+  };
+}
+
+// ── Basculer écoute ──────────────────────────────────────────────────────
+function toggleListen() {
+  if (speaking) { synth.cancel(); idle(); return; }
+  if (listening) { recog && recog.stop(); idle(); return; }
+  if (!recog) { document.getElementById('text-input').focus(); return; }
+  synth.cancel();
+  try {
+    recog.start();
+  } catch (e) {
+    // Si déjà démarré, recréer l'instance
+    initRec();
+    setTimeout(() => { try { recog.start(); } catch(e2) {} }, 300);
+  }
+}
+
+// ── Traitement question → backend ────────────────────────────────────────
+async function process(q) {
+  if (!q || !q.trim()) { idle(); return; }
+  setThink();
+  addMsg('user', q);
+  const tid = addTyping();
+  try {
+    const r = await fetch('/assistant-vocal/query', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': CSRF
+      },
+      body: JSON.stringify({ question: q })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    removeTyping(tid);
+    const ans = (d && d.response) ? d.response : "Je n'ai pas pu traiter votre demande.";
+    addMsg('ai', ans);
+    speakText(ans);
+    stSub.textContent = ans.substring(0, 80) + (ans.length > 80 ? '...' : '');
+  } catch (e) {
+    removeTyping(tid);
+    addMsg('ai', 'Erreur de connexion au serveur. Veuillez réessayer.');
+    idle();
+  }
+}
+
+// ── Synthèse vocale (avec voix fr préchargée) ────────────────────────────
+function speakText(t) {
+  if (!synth) { idle(); return; }
+  synth.cancel();
+  // Petit délai pour éviter les bugs Chrome/Edge sur cancel() immédiat
+  setTimeout(() => {
+    setSpeak();
+    const clean = t.replace(/<[^>]*>/g, '').trim();
+    if (!clean) { idle(); return; }
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = 'fr-FR';
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+    // Utiliser la voix française préchargée (si disponible)
+    if (frVoice) u.voice = frVoice;
+    u.onend = () => idle();
+    u.onerror = (e) => {
+      if (e.error !== 'interrupted') idle(); // 'interrupted' = stop() manuel, normal
+    };
+    try {
+      synth.speak(u);
+      // Workaround Chrome bug: synthèse bloquée après longue inactivité
+      if (synth.paused) synth.resume();
+    } catch (err) {
+      idle();
+    }
+  }, 100);
+}
+
+// ── Interface texte ──────────────────────────────────────────────────────
+function sendText() {
+  const inp = document.getElementById('text-input');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+  process(q);
+}
+function ask(q) { process(q); }
+
+// ── Messages UI ──────────────────────────────────────────────────────────
+let tc = 0;
+function addMsg(role, text) {
+  const d = document.createElement('div');
+  d.className = 'va-msg ' + role;
+  const now = new Date();
+  const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  // Sécuriser le texte (pas d'injection HTML)
+  const safe = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  d.innerHTML = `<div class="va-avatar">${role === 'ai' ? 'AI' : 'Vous'}</div><div><div class="va-bubble">${safe}</div><div class="va-msg-time">${ts}</div></div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function addTyping() {
+  const id = ++tc;
+  const d = document.createElement('div');
+  d.className = 'va-msg ai'; d.id = 't' + id;
+  d.innerHTML = '<div class="va-avatar">AI</div><div class="va-typing"><div class="va-tdot"></div><div class="va-tdot"></div><div class="va-tdot"></div></div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+function removeTyping(id) { const e = document.getElementById('t' + id); if (e) e.remove(); }
+
+// ── Raccourcis clavier ───────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault(); toggleListen();
+  }
+  if (e.code === 'Escape') { synth.cancel(); recog && recog.stop(); idle(); }
+});
+
+// ── Initialisation ───────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initRec();
+  loadVoices(); // double appel pour s'assurer du chargement
+});
+</script>
+{% endblock %}

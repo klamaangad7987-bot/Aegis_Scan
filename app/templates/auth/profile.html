@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Mon Profil{% endblock %}
+{% block page_title %}Mon Profil{% endblock %}
+{% block page_subtitle %}<span class="topbar-subtitle">Gérer mon compte</span>{% endblock %}
+
+{% block content %}
+<div style="max-width:680px; margin:0 auto;">
+
+  <!-- Avatar + infos -->
+  <div class="card" style="margin-bottom:20px;">
+    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+      <div style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, var(--accent-dim), var(--cyan-dim)); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:1.8rem; font-weight:800; color:white; flex-shrink:0;">
+        {{ (current_user.full_name or current_user.username)[:2].upper() }}
+      </div>
+      <div>
+        <div style="font-family:var(--font-display); font-size:1.3rem; font-weight:700;">
+          {{ current_user.full_name or current_user.username }}
+        </div>
+        <div style="color:var(--text-muted); font-size:0.875rem; margin-top:3px;">
+          {{ current_user.email }}
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+          <span class="badge badge-info">{{ current_user.role | capitalize }}</span>
+          {% if current_user.organization %}
+          <span class="badge badge-pending">{{ current_user.organization }}</span>
+          {% endif %}
+          <span class="badge badge-success">Actif</span>
+        </div>
+      </div>
+      <div style="margin-left:auto; text-align:right;">
+        <div style="font-size:0.75rem; color:var(--text-muted);">Membre depuis</div>
+        <div style="font-weight:600; font-size:0.875rem;">
+          {{ current_user.created_at.strftime('%d/%m/%Y') if current_user.created_at else '—' }}
+        </div>
+        {% if current_user.last_login %}
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          Dernière connexion<br>
+          <span style="font-family:var(--font-mono); font-size:0.72rem;">
+            {{ current_user.last_login.strftime('%d/%m/%Y %H:%M') }}
+          </span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistiques personnelles -->
+  <div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card">
+      <div class="stat-label">Mes scans</div>
+      <div class="stat-value" data-count="{{ current_user.scans.count() }}">
+        {{ current_user.scans.count() }}
+      </div>
+    </div>
+    <div class="stat-card critical">
+      <div class="stat-label">Scans terminés</div>
+      <div class="stat-value">
+        {{ current_user.scans.filter_by(status='completed').count() }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulaire modification -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Modifier le profil</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.profile') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="full_name">Nom complet</label>
+          <input type="text" id="full_name" name="full_name" class="form-control"
+                 value="{{ current_user.full_name or '' }}" placeholder="Prénom Nom">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="organization">Organisation</label>
+          <input type="text" id="organization" name="organization" class="form-control"
+                 value="{{ current_user.organization or '' }}" placeholder="Entreprise / Université">
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border-light); padding-top:18px; margin-top:6px;">
+        <div style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-bottom:14px;">
+          Changer le mot de passe
+          <span style="font-weight:400; color:var(--text-muted); margin-left:6px;">(laisser vide pour ne pas modifier)</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="current_password">Mot de passe actuel</label>
+          <input type="password" id="current_password" name="current_password" class="form-control"
+                 placeholder="••••••••">
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="new_password">Nouveau mot de passe</label>
+            <input type="password" id="new_password" name="new_password" class="form-control"
+                   placeholder="Min. 8 caractères" minlength="8">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirm_new">Confirmation</label>
+            <input type="password" id="confirm_new" name="confirm_password" class="form-control"
+                   placeholder="Répéter" minlength="8">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:8px;">
+        <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center; padding:12px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Enregistrer
+        </button>
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline" style="padding:12px 20px;">
+          Annuler
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

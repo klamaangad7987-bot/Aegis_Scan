@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>500 — Erreur serveur</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+  <div style="text-align:center; max-width:400px;">
+    <div style="font-family:var(--font-display); font-size:7rem; font-weight:800; color:var(--c-high); line-height:1; margin-bottom:16px; opacity:0.3;">500</div>
+    <h1 style="font-family:var(--font-display); font-size:1.5rem; margin-bottom:10px;">Erreur interne</h1>
+    <p style="color:var(--text-muted); margin-bottom:28px;">Une erreur inattendue s'est produite. L'équipe a été notifiée.</p>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Retour au dashboard</a>
+  </div>
+</div>
+</body>
+</html>

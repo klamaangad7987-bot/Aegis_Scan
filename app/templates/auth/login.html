@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Connexion — Aegis Scan</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/aegis.css') }}">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5L12 1z"/></svg>
+      </div>
+      <div class="auth-logo-text">Aegis <span>Scan</span></div>
+    </div>
+    <h1 class="auth-title">Connexion</h1>
+    <p class="auth-subtitle">Accédez à votre console de sécurité</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for category, message in messages %}
+        <div class="alert alert-{{ 'error' if category == 'error' else category }}">{{ message }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="form-label">Identifiant ou Email</label>
+        <input type="text" name="username" class="form-control" placeholder="Nom d'utilisateur" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input type="password" name="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:var(--text-2); margin-bottom:20px; cursor:pointer;">
+        <input type="checkbox" name="remember" style="accent-color:var(--accent);"> Se souvenir de moi
+      </label>
+      <button type="submit" class="btn btn-primary w-full" style="justify-content:center; padding:12px; width:100%;">
+        Se connecter
+      </button>
+    </form>
+
+    <div class="auth-footer">Pas de compte ? <a href="{{ url_for('auth.register') }}">S'inscrire</a></div>
+  </div>
+</div>
+</body>
+</html>

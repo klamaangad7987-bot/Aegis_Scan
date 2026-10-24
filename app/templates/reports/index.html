@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Rapports{% endblock %}
+{% block page_title %}Rapports{% endblock %}
+{% block page_subtitle %}<span class="topbar-subtitle">Rapports PDF générés</span>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Rapports disponibles ({{ reports|length }})</span>
+  </div>
+
+  {% if reports %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Rapport</th>
+          <th>Scan associé</th>
+          <th>Taille</th>
+          <th>Généré le</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for report in reports %}
+        <tr>
+          <td>
+            <div style="font-weight:600; font-size:0.875rem;">{{ report.filename }}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono);">
+              {{ report.report_type.upper() }}
+            </div>
+          </td>
+          <td>
+            {% if report.scan %}
+            <a href="{{ url_for('scan.detail', scan_id=report.scan_id) }}" style="font-size:0.875rem;">
+              {{ report.scan.name | truncate(40) }}
+            </a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-family:var(--font-mono); font-size:0.8rem; color:var(--text-muted);">
+            {% if report.file_size %}
+              {% if report.file_size > 1024*1024 %}
+                {{ (report.file_size / 1024 / 1024)|round(1) }} MB
+              {% else %}
+                {{ (report.file_size / 1024)|round(1) }} KB
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-size:0.8rem; color:var(--text-muted);">
+            {{ report.created_at.strftime('%d/%m/%Y %H:%M') if report.created_at else '—' }}
+          </td>
+          <td>
+            <a href="{{ url_for('reports.download', report_id=report.id) }}"
+               class="btn btn-primary btn-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Télécharger
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+    <div class="empty-state-title">Aucun rapport généré</div>
+    <div class="empty-state-text">
+      Après avoir effectué un scan, générez un rapport PDF depuis la page de détail.
+    </div>
+    <a href="{{ url_for('scan.index') }}" class="btn btn-primary">Voir les scans</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

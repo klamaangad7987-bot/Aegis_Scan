@@ -1,0 +1,108 @@
+pipeline {
+    agent any
+
+    environment {
+        FLASK_ENV = 'testing'
+        SECRET_KEY = 'jenkins-test-key'
+        DOCKER_IMAGE = 'devsecops-platform'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo '==> Récupération du code source...'
+                checkout scm
+            }
+        }
+
+        stage('Installation dépendances') {
+            steps {
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Tests unitaires') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    pytest tests/ -v --junitxml=test-results.xml
+                '''
+            }
+            post {
+                always {
+                    junit 'test-results.xml'
+                }
+            }
+        }
+
+        stage('Analyse SAST — Bandit') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    bandit -r app/ -f json -o bandit-report.json --severity-level medium || true
+                    echo "Rapport Bandit généré."
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bandit-report.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Scan dépendances — Safety') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    safety check -r requirements.txt || true
+                '''
+            }
+        }
+
+        stage('Build Docker') {
+            when { branch 'main' }
+            steps {
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+            }
+        }
+
+        stage('Scan Image — Trivy') {
+            when { branch 'main' }
+            steps {
+                sh "trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
+            }
+        }
+
+        stage('Déploiement') {
+            when { branch 'main' }
+            steps {
+                echo '==> Déploiement en production...'
+                sh '''
+                    docker-compose down || true
+                    docker-compose up -d
+                    echo "Déploiement terminé."
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '==> Pipeline DevSecOps réussi !'
+        }
+        failure {
+            echo '==> ÉCHEC — Vérifier les logs ci-dessus.'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

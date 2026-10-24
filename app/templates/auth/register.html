@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Inscription — Aegis Scan</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/aegis.css') }}">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card" style="max-width:480px;">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5L12 1z"/></svg>
+      </div>
+      <div class="auth-logo-text">Aegis <span>Scan</span></div>
+    </div>
+    <h1 class="auth-title">Créer un compte</h1>
+    <p class="auth-subtitle">Rejoindre la plateforme Aegis Scan</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for category, message in messages %}
+        <div class="alert alert-{{ 'error' if category == 'error' else category }}">{{ message }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Nom complet</label>
+          <input type="text" name="full_name" class="form-control" placeholder="Prénom Nom">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Organisation</label>
+          <input type="text" name="organization" class="form-control" placeholder="Entreprise">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nom d'utilisateur *</label>
+        <input type="text" name="username" class="form-control" placeholder="mon_username" required minlength="3">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" class="form-control" placeholder="email@exemple.com" required>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Mot de passe *</label>
+          <input type="password" name="password" class="form-control" placeholder="Min. 8 caractères" required minlength="8">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmation *</label>
+          <input type="password" name="confirm_password" class="form-control" placeholder="Répéter" required minlength="8">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px; margin-top:4px;">
+        Créer mon compte
+      </button>
+    </form>
+    <div class="auth-footer">Déjà un compte ? <a href="{{ url_for('auth.login') }}">Se connecter</a></div>
+  </div>
+</div>
+</body>
+</html>

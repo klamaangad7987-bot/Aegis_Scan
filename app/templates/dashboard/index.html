@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord — Aegis Scan{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px;">
+  <div>
+    <h1 class="page-title">Tableau de bord</h1>
+    <p class="page-subtitle">Vue synthétique: exécutions, état des scans, et accès rapide aux derniers résultats.</p>
+  </div>
+  <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary btn-lg">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    Lancer une analyse
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-card-label">Scans</div>
+    <div class="stat-card-value">{{ total_scans }}</div>
+    <div class="stat-card-sub">Total</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Actifs</div>
+    <div class="stat-card-value" style="color:var(--accent)">{{ running_scans }}</div>
+    <div class="stat-card-sub">En cours / en file</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Terminés</div>
+    <div class="stat-card-value" style="color:var(--c-low)">{{ completed_scans }}</div>
+    <div class="stat-card-sub">Analyses finalisées</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Échecs</div>
+    <div class="stat-card-value" style="color:var(--c-critical)">{{ failed_scans }}</div>
+    <div class="stat-card-sub">À re-vérifier</div>
+  </div>
+</div>
+
+<!-- Graphiques -->
+{% if total_vulns > 0 %}
+<div class="grid-2" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Répartition par sévérité</span>
+    </div>
+    <div style="height:200px; position:relative;">
+      <canvas id="severityChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Vulnérabilités ouvertes</span>
+    </div>
+    <div class="sev-boxes">
+      <div class="sev-box">
+        <div class="sev-box-val" style="color:var(--c-critical)">{{ severity_data.critical }}</div>
+        <div class="sev-box-bar" style="background:var(--c-critical);"></div>
+        <div class="sev-box-lbl">Critical</div>
+      </div>
+      <div class="sev-box">
+        <div class="sev-box-val" style="color:var(--c-high)">{{ severity_data.high }}</div>
+        <div class="sev-box-bar" style="background:var(--c-high);"></div>
+        <div class="sev-box-lbl">High</div>
+      </div>
+      <div class="sev-box">
+        <div class="sev-box-val" style="color:#b7791f">{{ severity_data.medium }}</div>
+        <div class="sev-box-bar" style="background:var(--c-medium);"></div>
+        <div class="sev-box-lbl">Medium</div>
+      </div>
+      <div class="sev-box">
+        <div class="sev-box-val" style="color:var(--c-low)">{{ severity_data.low }}</div>
+        <div class="sev-box-bar" style="background:var(--c-low);"></div>
+        <div class="sev-box-lbl">Low</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Derniers scans -->
+<div class="card">
+  <div style="font-size:0.75rem; color:var(--text-3); text-transform:uppercase; letter-spacing:0.06em; font-weight:600; margin-bottom:6px;">Activité</div>
+  <div class="card-header" style="margin-bottom:16px;">
+    <h2 class="card-title" style="font-size:1.4rem;">Derniers scans</h2>
+    <a href="{{ url_for('scan.index') }}" class="btn btn-outline btn-sm">
+      Voir l'historique &nbsp;→
+    </a>
+  </div>
+
+  {% if recent_scans %}
+    {% for scan in recent_scans %}
+    <a href="{{ url_for('scan.detail', scan_id=scan.id) }}" class="scan-item">
+      <div class="scan-item-letter">{{ scan.name[0].upper() }}</div>
+      <div>
+        <div class="scan-item-name">{{ scan.name }}</div>
+        <div class="scan-item-meta">
+          {{ scan.scan_type | upper }} &nbsp;·&nbsp; {{ scan.status | capitalize }}
+          {% if scan.target %} &nbsp;·&nbsp; {{ scan.target | truncate(30) }}{% endif %}
+        </div>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+        {% set rs = scan.risk_score %}
+        <span class="badge {% if rs >= 75 %}badge-critical{% elif rs >= 50 %}badge-high{% elif rs >= 25 %}badge-medium{% else %}badge-low{% endif %}">
+          {% if rs >= 75 %}Critique{% elif rs >= 50 %}Élevé{% elif rs >= 25 %}Moyen{% else %}Faible{% endif %}
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3)"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </a>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-title">Aucun scan effectué</div>
+      <div class="empty-state-text">Lancez votre première analyse de sécurité.</div>
+      <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">Lancer une analyse</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+{% if total_vulns > 0 %}
+const ctx = document.getElementById('severityChart').getContext('2d');
+new Chart(ctx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Critique','Élevée','Moyenne','Faible'],
+    datasets: [{
+      data: [{{ severity_data.critical }},{{ severity_data.high }},{{ severity_data.medium }},{{ severity_data.low }}],
+      backgroundColor: ['#e53e3e','#ed8936','#ecc94b','#48bb78'],
+      borderWidth: 0, hoverOffset: 5,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '65%',
+    plugins: { legend: { position: 'right', labels: { color: '#4a5568', font: { size: 12, family: 'Inter' }, padding: 12, boxWidth: 12 }}}
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

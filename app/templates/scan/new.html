@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Lancer une analyse — Aegis Scan{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px;">
+  <div>
+    <h1 class="page-title">Lancer une analyse</h1>
+    <p class="page-subtitle">Configurez la cible, ajoutez l'artefact (fichier ou URL) puis démarrez l'exécution.</p>
+  </div>
+  <button type="submit" form="scan-form" class="btn btn-primary btn-lg" id="submit-btn">
+    Créer le scan &nbsp;→
+  </button>
+</div>
+
+<form method="POST" action="{{ url_for('scan.new_scan') }}" enctype="multipart/form-data" id="scan-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <!-- Étape 1 -->
+  <div class="step-block">
+    <div class="step-number">Étape 1</div>
+    <div class="step-title">Configuration</div>
+    <div class="step-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+      <div class="form-group">
+        <label class="form-label" for="name">Nom du scan</label>
+        <input type="text" id="name" name="name" class="form-control"
+               placeholder="Ex: Audit API paiement — sprint 7">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cible</label>
+        <select name="scan_type" id="scan_type" class="form-control" required onchange="updateTarget(this.value)">
+          <option value="sast">Code source</option>
+          <option value="docker">Image / Dockerfile</option>
+          <option value="dast">URL application web</option>
+          <option value="dependency">Dépendances</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mode</label>
+        <select name="mode" class="form-control">
+          <option value="auto">Auto</option>
+          <option value="manuel">Manuel</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Exécution auto toggle -->
+    <div style="background:#f7fafc; border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px 18px; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="font-weight:600; font-size:0.875rem; margin-bottom:2px;">Exécution automatique</div>
+        <div style="font-size:0.78rem; color:var(--text-3);">Mode "Auto" lance l'ensemble des outils par défaut, sauf désactivation manuelle</div>
+      </div>
+      <div class="toggle on" id="auto-toggle" onclick="this.classList.toggle('on')"></div>
+    </div>
+  </div>
+
+  <!-- Étape 2 -->
+  <div class="step-block">
+    <div class="step-number">Étape 2</div>
+    <div class="step-title">Artefact à analyser</div>
+    <div class="step-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <p style="font-size:0.875rem; color:var(--text-3); margin-bottom:18px;">Selon la cible, fournissez un fichier (upload) ou une URL.</p>
+
+    <!-- Zone fichier (SAST / Docker / Dep) -->
+    <div id="zone-file">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <div>
+          <div style="font-weight:600; font-size:0.875rem;" id="file-zone-label">Code source (zip)</div>
+          <div style="font-size:0.78rem; color:var(--text-3);">Glissez-déposez ou choisissez un fichier. Limite: 50 MB.</div>
+        </div>
+        <button type="button" onclick="document.getElementById('file-input').click()" class="btn btn-outline btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Parcourir
+        </button>
+      </div>
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" name="file" style="display:none"
+               accept=".zip,.tar,.gz,.py,.js,.java,.php">
+        <svg class="upload-zone-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <div class="upload-zone-title" id="file-name-display">Déposez votre fichier ici</div>
+        <div class="upload-zone-sub" id="file-type-hint">Types acceptés: .zip, application/zip.</div>
+      </div>
+    </div>
+
+    <!-- Zone URL (DAST) -->
+    <div id="zone-url" style="display:none;">
+      <label class="form-label">URL cible</label>
+      <input type="url" name="target" class="form-control" placeholder="https://exemple.com">
+      <div style="font-size:0.75rem; color:var(--text-3); margin-top:5px;">L'application doit être accessible depuis ce serveur.</div>
+    </div>
+
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="form-group">
+        <label class="form-label">Notes (optionnel)</label>
+        <textarea name="notes" class="form-control" rows="4"
+                  placeholder="Contexte, périmètre, contraintes, etc."
+                  style="resize:vertical;"></textarea>
+      </div>
+      <div class="card" style="box-shadow:none;">
+        <div style="font-weight:700; font-size:0.875rem; margin-bottom:10px;">Sécurisation des uploads</div>
+        <ul style="font-size:0.8rem; color:var(--text-2); line-height:2; padding-left:16px;">
+          <li>Limite de taille côté UI (et serveur recommandé).</li>
+          <li>Vérification type via "accept" navigateur (non suffisante seule).</li>
+          <li>Scan d'artefact recommandé côté backend avant traitement.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) {
+    document.getElementById('file-name-display').textContent = e.target.files[0].name;
+  }
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor='var(--accent)'; });
+dz.addEventListener('dragleave', () => dz.style.borderColor='');
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.style.borderColor='';
+  document.getElementById('file-input').files = e.dataTransfer.files;
+  if (e.dataTransfer.files[0]) document.getElementById('file-name-display').textContent = e.dataTransfer.files[0].name;
+});
+
+function updateTarget(val) {
+  const zf = document.getElementById('zone-file');
+  const zu = document.getElementById('zone-url');
+  const lbl = document.getElementById('file-zone-label');
+  const hint = document.getElementById('file-type-hint');
+  if (val === 'dast') { zf.style.display='none'; zu.style.display='block'; }
+  else {
+    zf.style.display='block'; zu.style.display='none';
+    if (val === 'docker') { lbl.textContent='Image / Dockerfile'; hint.textContent='Types: Dockerfile, .tar.gz'; }
+    else if (val === 'dependency') { lbl.textContent='Fichier dépendances'; hint.textContent='Types: requirements.txt, package.json'; }
+    else { lbl.textContent='Code source (zip)'; hint.textContent='Types acceptés: .zip, application/zip.'; }
+  }
+}
+
+document.getElementById('scan-form').addEventListener('submit', () => {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Création...';
+});
+</script>
+{% endblock %}

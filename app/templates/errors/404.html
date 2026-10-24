@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Page introuvable</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+  <div style="text-align:center; max-width:400px;">
+    <div style="font-family:var(--font-display); font-size:7rem; font-weight:800; color:var(--accent); line-height:1; margin-bottom:16px; opacity:0.3;">404</div>
+    <h1 style="font-family:var(--font-display); font-size:1.5rem; margin-bottom:10px;">Page introuvable</h1>
+    <p style="color:var(--text-muted); margin-bottom:28px;">La page que vous recherchez n'existe pas ou a été déplacée.</p>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      Retour au dashboard
+    </a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+
+  # ── Application Flask ──────────────────────────────────
+  web:
+    build: .
+    container_name: devsecops_web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DATABASE_URL=sqlite:////app/data/devsecops.db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./uploads:/app/uploads
+      - ./reports_output:/app/reports_output
+      - db_data:/app/data
+    depends_on:
+      - redis
+    networks:
+      - devsecops_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Redis (Celery broker) ─────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: devsecops_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - devsecops_net
+
+  # ── Nginx reverse proxy ───────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: devsecops_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web
+    networks:
+      - devsecops_net
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  devsecops_net:
+    driver: bridge

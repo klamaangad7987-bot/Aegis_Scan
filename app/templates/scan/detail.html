@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% block title %}Résultats — {{ scan.name }}{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div style="margin-bottom:24px;">
+  <a href="{{ url_for('scan.index') }}" style="font-size:0.82rem; color:var(--text-3); display:inline-flex; align-items:center; gap:5px; margin-bottom:12px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+    Retour à l'historique
+  </a>
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1 class="page-title" style="font-size:1.8rem;">Résultats — {{ scan.name }}</h1>
+      <p class="page-subtitle">
+        {{ scan.scan_type | upper }} &nbsp;·&nbsp;
+        {{ scan.status | capitalize }} &nbsp;·&nbsp;
+        {{ scan.total_vulnerabilities }} vulnérabilité(s) détectée(s)
+      </p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="location.reload()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Rafraîchir
+      </button>
+      {% if scan.status == 'completed' %}
+      <button class="btn btn-outline btn-sm btn-generate-report" data-scan-id="{{ scan.id }}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        PDF
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Score + Sévérités -->
+<div class="grid-2" style="margin-bottom:20px;">
+  <!-- Score de risque -->
+  <div class="card">
+    <div style="display:flex; gap:28px; align-items:flex-start;">
+      <div class="risk-score-block">
+        <div style="font-size:0.75rem; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px;">Score de risque</div>
+        {% set rs = scan.risk_score %}
+        <div class="risk-score-val {% if rs >= 75 %}risk-critical{% elif rs >= 50 %}risk-high{% elif rs >= 25 %}risk-medium{% else %}risk-low{% endif %}">
+          {{ rs }}<span class="risk-score-max">/100</span>
+        </div>
+        <div class="risk-level {% if rs >= 75 %}risk-critical{% elif rs >= 50 %}risk-high{% elif rs >= 25 %}risk-medium{% else %}risk-low{% endif %}">
+          {% if rs >= 75 %}CRITIQUE{% elif rs >= 50 %}ÉLEVÉ{% elif rs >= 25 %}MOYEN{% else %}FAIBLE{% endif %}
+        </div>
+        <div class="risk-bar risk-bar-{% if rs >= 75 %}critical{% elif rs >= 50 %}high{% elif rs >= 25 %}medium{% else %}low{% endif %}" style="width:160px;">
+          <div class="risk-bar-fill" style="width:{{ rs }}%;"></div>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:0.75rem; font-weight:600; color:var(--text-3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Répartition par sévérité</div>
+        <div style="display:flex; gap:16px; align-items:flex-end;">
+          <div style="text-align:center;">
+            <div style="font-size:1.8rem; font-weight:800; color:var(--c-critical);">{{ scan.critical_count }}</div>
+            <div style="height:6px; width:40px; background:var(--c-critical); border-radius:3px; margin:4px auto;"></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.8rem; font-weight:800; color:var(--c-high);">{{ scan.high_count }}</div>
+            <div style="height:6px; width:40px; background:var(--c-high); border-radius:3px; margin:4px auto;"></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.8rem; font-weight:800; color:#b7791f;">{{ scan.medium_count }}</div>
+            <div style="height:6px; width:40px; background:var(--c-medium); border-radius:3px; margin:4px auto;"></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.8rem; font-weight:800; color:var(--c-low);">{{ scan.low_count }}</div>
+            <div style="height:6px; width:40px; background:var(--c-low); border-radius:3px; margin:4px auto;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Infos scan -->
+  <div class="card">
+    <div style="font-weight:700; font-size:0.95rem; margin-bottom:12px;">Informations</div>
+    <table style="width:100%; font-size:0.845rem; border-collapse:collapse;">
+      <tr>
+        <td style="padding:6px 0; color:var(--text-3); width:35%;">Nom</td>
+        <td style="padding:6px 0; font-weight:600;">{{ scan.name }}</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0; color:var(--text-3);">Statut</td>
+        <td style="padding:6px 0;"><span class="badge badge-{{ 'completed' if scan.status == 'completed' else 'running' if scan.status in ('running','pending') else 'failed' }}">{{ scan.status }}</span></td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0; color:var(--text-3);">Cible</td>
+        <td style="padding:6px 0; font-family:'JetBrains Mono',monospace; font-size:0.78rem;">{{ scan.scan_type | upper }}</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0; color:var(--text-3);">Date</td>
+        <td style="padding:6px 0; font-size:0.8rem;">{{ scan.created_at.strftime('%d/%m/%Y %H:%M') if scan.created_at else '—' }}</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0; color:var(--text-3);">Durée</td>
+        <td style="padding:6px 0; font-family:'JetBrains Mono',monospace; font-size:0.8rem;">{{ scan.duration_str }}</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('vulns', this)">Vulnérabilités</button>
+  <button class="tab-btn" onclick="showTab('resume', this)">Résumé</button>
+  <button class="tab-btn" onclick="showTab('rapports', this)">Rapports</button>
+</div>
+
+<!-- Tab: Vulnérabilités -->
+<div id="tab-vulns">
+  <!-- Filtres -->
+  <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center;">
+    <select id="sev-filter" class="form-control" style="width:auto; min-width:130px;" onchange="filterVulns()">
+      <option value="">Sévérité: Toutes</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <select id="tool-filter" class="form-control" style="width:auto; min-width:120px;">
+      <option value="">Outil: Tous</option>
+      <option value="bandit">Bandit</option>
+      <option value="semgrep">Semgrep</option>
+      <option value="zap">ZAP</option>
+    </select>
+    <input type="text" id="search-filter" class="form-control" style="width:200px;" placeholder="Rechercher...">
+  </div>
+
+  {% if vulns.items %}
+    {% for vuln in vulns.items %}
+    <div class="vuln-item vuln-{{ vuln.severity }}" onclick="toggleVuln(this)">
+      <div class="vuln-sev-bar"></div>
+      <div style="flex:1; min-width:0;">
+        <div class="vuln-title">{{ vuln.title }}</div>
+        <div class="vuln-meta">
+          {{ vuln.tool or 'scanner' }}
+          {% if vuln.file_path %} · {{ vuln.file_path }}{% if vuln.line_number %}:{{ vuln.line_number }}{% endif %}{% endif %}
+        </div>
+      </div>
+      <svg class="vuln-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <!-- Détail vuln (caché) -->
+    <div class="vuln-detail" style="display:none; background:#f7fafc; border:1px solid var(--border); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm); padding:16px 18px; margin-bottom:8px; margin-top:-8px;">
+      <div class="grid-2" style="margin-bottom:12px;">
+        <div>
+          <div style="font-size:0.72rem; color:var(--text-3); text-transform:uppercase; font-weight:600; margin-bottom:5px;">Classification</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span class="badge badge-{{ vuln.severity }}">{{ vuln.severity | upper }}</span>
+            {% if vuln.category %}<span class="badge badge-info">{{ vuln.category }}</span>{% endif %}
+            {% if vuln.cwe_id %}<span class="badge badge-pending">{{ vuln.cwe_id }}</span>{% endif %}
+            {% if vuln.cvss_score %}<span class="badge badge-pending">CVSS {{ vuln.cvss_score }}</span>{% endif %}
+          </div>
+        </div>
+        {% if vuln.ai_confidence %}
+        <div>
+          <div style="font-size:0.72rem; color:var(--text-3); text-transform:uppercase; font-weight:600; margin-bottom:5px;">Score IA</div>
+          <span style="font-size:0.875rem; font-weight:600; color:var(--accent);">{{ (vuln.ai_confidence * 100)|int }}% confiance</span>
+        </div>
+        {% endif %}
+      </div>
+      {% if vuln.description %}
+      <div style="margin-bottom:10px;">
+        <div style="font-size:0.72rem; color:var(--text-3); text-transform:uppercase; font-weight:600; margin-bottom:4px;">Description</div>
+        <p style="font-size:0.875rem; color:var(--text-2); line-height:1.6;">{{ vuln.description }}</p>
+      </div>
+      {% endif %}
+      {% if vuln.code_snippet %}
+      <div style="margin-bottom:10px;">
+        <div style="font-size:0.72rem; color:var(--text-3); text-transform:uppercase; font-weight:600; margin-bottom:4px;">Code</div>
+        <pre style="background:#1a202c; color:#e2e8f0; padding:12px; border-radius:6px; font-size:0.78rem; overflow-x:auto; font-family:'JetBrains Mono',monospace;">{{ vuln.code_snippet }}</pre>
+      </div>
+      {% endif %}
+      {% if vuln.recommendation %}
+      <div style="background:#f0fff4; border:1px solid #c6f6d5; border-radius:6px; padding:12px 14px;">
+        <div style="font-size:0.72rem; color:#276749; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Recommandation</div>
+        <p style="font-size:0.875rem; color:#276749; line-height:1.6;">{{ vuln.recommendation }}</p>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if vulns.pages > 1 %}
+    <div class="pagination">
+      {% for p in vulns.iter_pages() %}
+        {% if p %}
+          <a href="{{ url_for('scan.detail', scan_id=scan.id, page=p) }}" class="page-link {% if p == vulns.page %}active{% endif %}">{{ p }}</a>
+        {% else %}
+          <span class="page-link">…</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  {% else %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="empty-state-title">Aucune vulnérabilité détectée</div>
+      <div class="empty-state-text">Le code analysé semble sécurisé.</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Tab: Résumé -->
+<div id="tab-resume" style="display:none;">
+  <div class="card">
+    <div class="card-title">Résumé de l'analyse</div>
+    <div style="margin-top:16px; font-size:0.875rem; color:var(--text-2); line-height:1.8;">
+      <p>L'analyse <strong>{{ scan.name }}</strong> de type <strong>{{ scan.scan_type | upper }}</strong>
+      a détecté <strong>{{ scan.total_vulnerabilities }}</strong> vulnérabilité(s) au total.</p>
+      <p style="margin-top:10px;">Score de risque global : <strong>{{ scan.risk_score }}/100</strong>
+      — {% if scan.risk_score >= 75 %}niveau critique, correction urgente requise.
+      {% elif scan.risk_score >= 50 %}niveau élevé, corrections prioritaires recommandées.
+      {% elif scan.risk_score >= 25 %}niveau moyen, corrections à planifier.
+      {% else %}niveau faible, surveiller lors des prochaines analyses.{% endif %}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Rapports -->
+<div id="tab-rapports" style="display:none;">
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px;">Générer un rapport</div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      {% if scan.status == 'completed' %}
+      <button class="btn btn-primary btn-generate-report" data-scan-id="{{ scan.id }}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Télécharger PDF
+      </button>
+      {% else %}
+      <p style="color:var(--text-3); font-size:0.875rem;">Le scan doit être terminé pour générer un rapport.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Tabs ─────────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tab = document.getElementById('tab-' + name);
+  if (tab) tab.style.display = 'block';
+  if (btn) btn.classList.add('active');
+}
+
+// ── Dépliage vulnérabilité ───────────────────────────────────────────────
+function toggleVuln(row) {
+  const detail = row.nextElementSibling;
+  if (detail && detail.classList.contains('vuln-detail')) {
+    detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+// ── Filtre vulnérabilités (côté client) ──────────────────────────────────
+function filterVulns() {
+  const sevFilter  = (document.getElementById('sev-filter')    || {value: ''}).value.toLowerCase();
+  const toolFilter = (document.getElementById('tool-filter')   || {value: ''}).value.toLowerCase();
+  const search     = (document.getElementById('search-filter') || {value: ''}).value.toLowerCase();
+
+  // Les items vuln ont la classe vuln-item et vuln-{severity}
+  document.querySelectorAll('.vuln-item').forEach(item => {
+    // Extraire la sévérité depuis la classe CSS (vuln-critical, vuln-high, etc.)
+    const classes = Array.from(item.classList);
+    const sevClass = classes.find(c => c.startsWith('vuln-') && c !== 'vuln-item');
+    const sev = sevClass ? sevClass.replace('vuln-', '') : '';
+    const text = item.textContent.toLowerCase();
+
+    // Pour le filtre tool: chercher dans le texte de l'item ou attribut data
+    const tool = (item.dataset.tool || '').toLowerCase();
+
+    const matchSev  = !sevFilter  || sev  === sevFilter;
+    const matchTool = !toolFilter || tool === toolFilter || !tool;
+    const matchText = !search     || text.includes(search);
+
+    const visible = matchSev && matchTool && matchText;
+    item.style.display = visible ? '' : 'none';
+
+    // Replier aussi la vue détail lors du filtre
+    const detail = item.nextElementSibling;
+    if (detail && detail.classList.contains('vuln-detail')) {
+      detail.style.display = 'none';
+    }
+  });
+}
+
+// Écouter la saisie dans le champ de recherche
+const searchInput = document.getElementById('search-filter');
+if (searchInput) searchInput.addEventListener('input', filterVulns);
+const toolSelect = document.getElementById('tool-filter');
+if (toolSelect) toolSelect.addEventListener('change', filterVulns);
+
+// ── Rapport PDF ──────────────────────────────────────────────────────────
+document.querySelectorAll('.btn-generate-report').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const scanId = btn.dataset.scanId;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Génération...';
+    try {
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrf = csrfMeta ? csrfMeta.content : '';
+      const res = await fetch(`/reports/generate/${scanId}`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data.success && data.report_id) {
+        window.location.href = `/reports/download/${data.report_id}`;
+      } else {
+        alert('Erreur lors de la génération du rapport : ' + (data.error || 'inconnue'));
+      }
+    } catch(e) {
+      alert('Erreur de connexion lors de la génération du rapport.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  });
+});
+</script>
+{% endblock %}
